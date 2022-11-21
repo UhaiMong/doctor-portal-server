@@ -30,7 +30,6 @@ function verifyJWT(req, res, next) {
         req.decoded = decoded;
         next();
     })
-    console.log("token inside", token)
 }
 async function run() {
     try {
@@ -39,6 +38,9 @@ async function run() {
         const bookingCollections = client.db('DoctorPortal').collection('bookingCollections');
 
         const usersCollections = client.db('DoctorPortal').collection('users');
+
+        const doctorCollections = client.db('DoctorPortal').collection('doctors');
+
         // use aggregate to query multiple collection and then merge data
 
         app.get('/appointmentSlots', async (req, res) => {
@@ -132,6 +134,14 @@ async function run() {
             const query = { email: email };
             const bookings = await bookingCollections.find(query).toArray();
             res.send(bookings);
+        });
+
+        // specialty appointment for doctor
+
+        app.get('/specialtyappointment', async (req, res) => {
+            const query = {};
+            const result = await appointmentSlotCollection.find(query).project({name: 1}).toArray();
+            res.send(result)
         })
 
         app.post('/bookings', async (req, res) => {
@@ -177,7 +187,7 @@ async function run() {
 
         app.get('/users/admin/:email', async (req, res) => {
             const email = req.params.email;
-            const query = { email: email };
+            const query = { email };
             const user = await usersCollections.findOne(query);
             res.send({isAdmin: user?.role === 'admin'});
         })
@@ -208,6 +218,29 @@ async function run() {
                 }
             }
             const result = await usersCollections.updateOne(filter, updateDoc, options);
+            res.send(result);
+        });
+
+        // doctor information send to client
+        
+        app.get('/doctors', async (req, res) => {
+            const query = {};
+            const doctors = await doctorCollections.find(query).toArray();
+            res.send(doctors);
+        })
+        // doctor collection post
+
+        app.post('/doctors', verifyJWT, async (req, res) => {
+            const doctor = req.body;
+            const result = await doctorCollections.insertOne(doctor);
+            res.send(result);
+        });
+
+        // delete doctor
+        app.delete('/doctors/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) };
+            const result = await doctorCollections.deleteOne(filter);
             res.send(result);
         })
     }
